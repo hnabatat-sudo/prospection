@@ -11,7 +11,7 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="PROSPECTION", page_icon="🌿", layout="wide")
 
 st.image("logo.png", width=180)
-st.title("CRM AGRICOLE - PROSPECTION")
+st.title("PROSPECTION")
 
 # =====================================================
 # GOOGLE SHEETS
@@ -38,9 +38,6 @@ df = pd.DataFrame(data)
 if not df.empty:
     df.columns = df.columns.str.strip().str.lower()
 
-# =====================================================
-# TABS
-# =====================================================
 tab1, tab2, tab3 = st.tabs(
     ["📝 Nouvelle Prospection", "🔎 Base Clients", "📊 Dashboard"]
 )
@@ -71,37 +68,49 @@ with tab1:
             nom = ""
             prenom = ""
 
-        tel = st.text_input("Téléphone")
-        email = st.text_input("Email")
+        tel = st.text_input("Téléphone", key="form_tel")
+        email = st.text_input("Email", key="form_email")
         adresse = st.text_input("Adresse")
 
+        # ===================== CULTURES =====================
         # ===================== CULTURES =====================
         st.markdown("### 🌾 Cultures")
 
         liste_cultures = [
-            "Tomate","Poivron","Aubergine","Oignon","Courgette",
-            "Laitue","Ciboulette","Herbes aromatiques",
-            "Melon","Pasteque","Concombre"
+            "Tomate", "Poivron", "Aubergine", "Oignon", "Courgette",
+            "Laitue", "Ciboulette", "Herbes aromatiques",
+            "Melon", "Pasteque", "Concombre"
         ]
 
         cultures_selectionnees = st.multiselect(
             "Sélectionner les cultures",
-            liste_cultures
+            liste_cultures,
+            key="cultures_select"
         )
 
         cultures_data = {}
         superficie_totale = 0
 
-        for culture in cultures_selectionnees:
-            superficie = st.number_input(
-                f"Superficie {culture} (ha)",
-                min_value=0.0,
-                key=f"sup_{culture}"
-            )
-            cultures_data[culture] = superficie
-            superficie_totale += superficie
+        if cultures_selectionnees:
 
-        st.info(f"Superficie totale : {superficie_totale} ha")
+            st.markdown("#### 📏 Superficie par culture")
+
+            for culture in cultures_selectionnees:
+                superficie = st.number_input(
+                    f"Superficie {culture} (ha)",
+                    min_value=0.0,
+                    step=0.1,
+                    format="%.2f",
+                    key=f"superficie_{culture}"
+                )
+
+                cultures_data[culture] = superficie
+                superficie_totale += superficie
+
+            st.success(f"Superficie totale : {superficie_totale:.2f} ha")
+
+        else:
+            superficie_totale = 0
 
         cultures_string = ", ".join(cultures_selectionnees)
         superficies_string = " | ".join(
@@ -131,43 +140,41 @@ with tab1:
 
         if submit:
 
-            # Anti-doublon sécurisé
             if not df.empty and "téléphone" in df.columns and "email" in df.columns:
-
                 existing = df[
                     (df["téléphone"].astype(str) == str(tel)) |
                     (df["email"].astype(str) == str(email))
                 ]
+            else:
+                existing = pd.DataFrame()
 
-                if not existing.empty:
-                    st.error("⚠️ Client déjà enregistré !")
-                    st.stop()
+            if not existing.empty:
+                st.error("⚠️ Client déjà enregistré !")
+            else:
+                new_row = [
+                    str(date_prospection),
+                    commercial,
+                    region,
+                    type_client,
+                    nom,
+                    prenom,
+                    nom_societe,
+                    ice,
+                    responsable,
+                    tel,
+                    email,
+                    adresse,
+                    gps,
+                    lien_maps,
+                    superficie_totale,
+                    cultures_string,
+                    superficies_string
+                ]
 
-            new_row = [
-                str(date_prospection),
-                commercial,
-                region,
-                type_client,
-                nom,
-                prenom,
-                nom_societe,
-                ice,
-                responsable,
-                tel,
-                email,
-                adresse,
-                gps,
-                lien_maps,
-                superficie_totale,
-                cultures_string,
-                superficies_string
-            ]
-
-            sheet.append_row(new_row)
-
-            st.success("✅ Client enregistré avec succès !")
-            st.balloons()
-            st.rerun()
+                sheet.append_row(new_row)
+                st.success("✅ Client enregistré avec succès !")
+                st.balloons()
+                st.rerun()
 
 # =====================================================
 # ONGLET 2 - BASE CLIENTS
@@ -182,9 +189,9 @@ with tab2:
 
         col1, col2, col3 = st.columns(3)
 
-        recherche_nom = col1.text_input("Nom / Société")
-        recherche_tel = col2.text_input("Téléphone")
-        recherche_region = col3.text_input("Région")
+        recherche_nom = col1.text_input("Nom / Société", key="recherche_nom")
+        recherche_tel = col2.text_input("Téléphone", key="recherche_tel")
+        recherche_region = col3.text_input("Région", key="recherche_region")
 
         filtered_df = df.copy()
 
@@ -196,12 +203,12 @@ with tab2:
                 )
             ]
 
-        if recherche_tel and "téléphone" in df.columns:
+        if recherche_tel and "téléphone" in filtered_df.columns:
             filtered_df = filtered_df[
                 filtered_df["téléphone"].astype(str).str.contains(recherche_tel)
             ]
 
-        if recherche_region and "region" in df.columns:
+        if recherche_region and "region" in filtered_df.columns:
             filtered_df = filtered_df[
                 filtered_df["region"].astype(str).str.contains(recherche_region)
             ]
@@ -217,7 +224,7 @@ with tab2:
 
             if st.button("🗑 Supprimer Client"):
                 sheet.delete_rows(index_to_delete + 2)
-                st.success("Client supprimé")
+                st.success("Client supprimé avec succès")
                 st.rerun()
 
 # =====================================================
@@ -230,11 +237,8 @@ with tab3:
     else:
 
         col1, col2 = st.columns(2)
-
         col1.metric("Total Clients", len(df))
-
-        if "region" in df.columns:
-            col2.metric("Régions", df["region"].nunique())
+        col2.metric("Régions", df["region"].nunique() if "region" in df.columns else 0)
 
         if "commercial" in df.columns:
             st.subheader("Clients par Commercial")
@@ -252,7 +256,6 @@ with tab3:
                 coords["lat"] = pd.to_numeric(coords["lat"], errors="coerce")
                 coords["lon"] = pd.to_numeric(coords["lon"], errors="coerce")
                 coords = coords.dropna()
-
                 if not coords.empty:
                     st.subheader("Carte globale des clients")
                     st.map(coords)
