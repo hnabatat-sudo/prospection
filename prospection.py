@@ -11,7 +11,7 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="PROSPECTION", page_icon="🌿", layout="wide")
 
 st.image("logo.png", width=180)
-st.title("PROSPECTION")
+st.title("CRM AGRICOLE - PROSPECTION")
 
 # =====================================================
 # GOOGLE SHEETS
@@ -34,10 +34,12 @@ sheet = client.open_by_key(SHEET_ID).sheet1
 data = sheet.get_all_records()
 df = pd.DataFrame(data)
 
-# Normalisation colonnes
 if not df.empty:
     df.columns = df.columns.str.strip().str.lower()
 
+# =====================================================
+# TABS
+# =====================================================
 tab1, tab2, tab3 = st.tabs(
     ["📝 Nouvelle Prospection", "🔎 Base Clients", "📊 Dashboard"]
 )
@@ -47,134 +49,132 @@ tab1, tab2, tab3 = st.tabs(
 # =====================================================
 with tab1:
 
-    with st.form("form_prospection"):
+    st.subheader("Enregistrer un client")
 
-        commercial = st.text_input("Commercial")
-        date_prospection = st.date_input("Date", date.today())
-        region = st.text_input("Région")
+    # Infos générales
+    commercial = st.text_input("Commercial")
+    date_prospection = st.date_input("Date", date.today())
+    region = st.text_input("Région")
 
-        type_client = st.selectbox("Type de client", ["Particulier", "Société"])
+    type_client = st.selectbox("Type de client", ["Particulier", "Société"])
 
-        if type_client == "Particulier":
-            nom = st.text_input("Nom")
-            prenom = st.text_input("Prénom")
-            nom_societe = ""
-            ice = ""
-            responsable = ""
-        else:
-            nom_societe = st.text_input("Nom Société")
-            ice = st.text_input("ICE")
-            responsable = st.text_input("Responsable")
-            nom = ""
-            prenom = ""
+    if type_client == "Particulier":
+        nom = st.text_input("Nom")
+        prenom = st.text_input("Prénom")
+        nom_societe = ""
+        ice = ""
+        responsable = ""
+    else:
+        nom_societe = st.text_input("Nom Société")
+        ice = st.text_input("ICE")
+        responsable = st.text_input("Responsable")
+        nom = ""
+        prenom = ""
 
-        tel = st.text_input("Téléphone", key="form_tel")
-        email = st.text_input("Email", key="form_email")
-        adresse = st.text_input("Adresse")
+    tel = st.text_input("Téléphone")
+    email = st.text_input("Email")
+    adresse = st.text_input("Adresse")
 
-        # ===================== CULTURES =====================
-        # ===================== CULTURES =====================
-        st.markdown("### 🌾 Cultures")
+    # ===================== CULTURES =====================
+    st.markdown("### 🌾 Cultures")
 
-        liste_cultures = [
-            "Tomate", "Poivron", "Aubergine", "Oignon", "Courgette",
-            "Laitue", "Ciboulette", "Herbes aromatiques",
-            "Melon", "Pasteque", "Concombre"
-        ]
+    liste_cultures = [
+        "Tomate","Poivron","Aubergine","Oignon","Courgette",
+        "Laitue","Ciboulette","Herbes aromatiques",
+        "Melon","Pasteque","Concombre"
+    ]
 
-        cultures_selectionnees = st.multiselect(
-            "Sélectionner les cultures",
-            liste_cultures,
-            key="cultures_select"
-        )
+    cultures_selectionnees = st.multiselect(
+        "Sélectionner les cultures",
+        liste_cultures
+    )
 
-        cultures_data = {}
-        superficie_totale = 0
+    cultures_data = {}
+    superficie_totale = 0
 
-        if cultures_selectionnees:
+    if cultures_selectionnees:
+        st.markdown("#### 📏 Superficie par culture")
 
-            st.markdown("#### 📏 Superficie par culture")
+        for culture in cultures_selectionnees:
+            superficie = st.number_input(
+                f"Superficie {culture} (ha)",
+                min_value=0.0,
+                step=0.1,
+                key=f"sup_{culture}"
+            )
+            cultures_data[culture] = superficie
+            superficie_totale += superficie
 
-            for culture in cultures_selectionnees:
-                superficie = st.number_input(
-                    f"Superficie {culture} (ha)",
-                    min_value=0.0,
-                    step=0.1,
-                    format="%.2f",
-                    key=f"superficie_{culture}"
-                )
+        st.success(f"Superficie totale : {superficie_totale:.2f} ha")
 
-                cultures_data[culture] = superficie
-                superficie_totale += superficie
+    cultures_string = ", ".join(cultures_selectionnees)
+    superficies_string = " | ".join(
+        [f"{c}:{s}ha" for c, s in cultures_data.items()]
+    )
 
-            st.success(f"Superficie totale : {superficie_totale:.2f} ha")
+    # ===================== GPS =====================
+    st.markdown("### 📍 Localisation automatique")
 
-        else:
-            superficie_totale = 0
+    location = get_geolocation()
 
-        cultures_string = ", ".join(cultures_selectionnees)
-        superficies_string = " | ".join(
-            [f"{c}:{s}ha" for c, s in cultures_data.items()]
-        )
+    if location:
+        gps_lat = location["coords"]["latitude"]
+        gps_lon = location["coords"]["longitude"]
+        gps = f"{gps_lat},{gps_lon}"
+        lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
+        st.success("Position détectée automatiquement")
+        st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
+    else:
+        gps = ""
+        lien_maps = ""
+        st.info("Autorisez la localisation si demandé")
 
-        # ===================== GPS AUTO =====================
-        st.markdown("### 📍 Localisation automatique")
+    # ===================== ENREGISTREMENT =====================
+    if st.button("💾 Enregistrer le client"):
 
-        location = get_geolocation()
+        # Anti-doublon
+        existing = pd.DataFrame()
 
-        if location:
-            gps_lat = location["coords"]["latitude"]
-            gps_lon = location["coords"]["longitude"]
-
-            gps = f"{gps_lat},{gps_lon}"
-            lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
-
-            st.success("📍 Position détectée automatiquement")
-            st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
-        else:
-            gps = ""
-            lien_maps = ""
-            st.warning("Autorisez la localisation dans votre navigateur")
-
-        submit = st.form_submit_button("💾 Enregistrer le client")
-
-        if submit:
-
-            if not df.empty and "téléphone" in df.columns and "email" in df.columns:
-                existing = df[
-                    (df["téléphone"].astype(str) == str(tel)) |
-                    (df["email"].astype(str) == str(email))
-                ]
+        if not df.empty:
+            if "téléphone" in df.columns:
+                existing_tel = df[df["téléphone"].astype(str) == str(tel)]
             else:
-                existing = pd.DataFrame()
+                existing_tel = pd.DataFrame()
 
-            if not existing.empty:
-                st.error("⚠️ Client déjà enregistré !")
+            if "email" in df.columns:
+                existing_email = df[df["email"].astype(str) == str(email)]
             else:
-                new_row = [
-                    str(date_prospection),
-                    commercial,
-                    region,
-                    type_client,
-                    nom,
-                    prenom,
-                    nom_societe,
-                    ice,
-                    responsable,
-                    tel,
-                    email,
-                    adresse,
-                    gps,
-                    lien_maps,
-                    superficie_totale,
-                    cultures_string,
-                    superficies_string
-                ]
+                existing_email = pd.DataFrame()
 
-                sheet.append_row(new_row)
-                st.success("✅ Client enregistré avec succès !")
-                st.balloons()
-                st.rerun()
+            existing = pd.concat([existing_tel, existing_email])
+
+        if not existing.empty:
+            st.error("⚠️ Client déjà enregistré !")
+        else:
+            new_row = [
+                str(date_prospection),
+                commercial,
+                region,
+                type_client,
+                nom,
+                prenom,
+                nom_societe,
+                ice,
+                responsable,
+                tel,
+                email,
+                adresse,
+                gps,
+                lien_maps,
+                superficie_totale,
+                cultures_string,
+                superficies_string
+            ]
+
+            sheet.append_row(new_row)
+            st.success("✅ Client enregistré avec succès !")
+            st.balloons()
+            st.rerun()
 
 # =====================================================
 # ONGLET 2 - BASE CLIENTS
@@ -189,9 +189,9 @@ with tab2:
 
         col1, col2, col3 = st.columns(3)
 
-        recherche_nom = col1.text_input("Nom / Société", key="recherche_nom")
-        recherche_tel = col2.text_input("Téléphone", key="recherche_tel")
-        recherche_region = col3.text_input("Région", key="recherche_region")
+        recherche_nom = col1.text_input("Nom / Société")
+        recherche_tel = col2.text_input("Téléphone")
+        recherche_region = col3.text_input("Région")
 
         filtered_df = df.copy()
 
@@ -214,18 +214,6 @@ with tab2:
             ]
 
         st.dataframe(filtered_df, use_container_width=True)
-
-        if not filtered_df.empty:
-
-            index_to_delete = st.selectbox(
-                "Sélectionner index à supprimer",
-                filtered_df.index
-            )
-
-            if st.button("🗑 Supprimer Client"):
-                sheet.delete_rows(index_to_delete + 2)
-                st.success("Client supprimé avec succès")
-                st.rerun()
 
 # =====================================================
 # ONGLET 3 - DASHBOARD
@@ -256,6 +244,7 @@ with tab3:
                 coords["lat"] = pd.to_numeric(coords["lat"], errors="coerce")
                 coords["lon"] = pd.to_numeric(coords["lon"], errors="coerce")
                 coords = coords.dropna()
+
                 if not coords.empty:
                     st.subheader("Carte globale des clients")
                     st.map(coords)
