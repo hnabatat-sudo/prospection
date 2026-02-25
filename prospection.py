@@ -65,8 +65,8 @@ with tab1:
         nom = ""
         prenom = ""
 
-    tel = st.text_input("Téléphone")
-    email = st.text_input("Email")
+    tel = st.text_input("Téléphone", key="form_tel")
+    email = st.text_input("Email", key="form_email")
     adresse = st.text_input("Adresse")
 
     # ===================== CULTURES =====================
@@ -186,9 +186,9 @@ with tab2:
 
         col1, col2, col3 = st.columns(3)
 
-        recherche_nom = col1.text_input("Nom / Société")
-        recherche_tel = col2.text_input("Téléphone")
-        recherche_region = col3.text_input("Région")
+        recherche_nom = col1.text_input("Nom / Société", key="recherche_nom")
+        recherche_tel = col2.text_input("Téléphone", key="recherche_tel")
+        recherche_region = col3.text_input("Région", key="recherche_region")
 
         filtered_df = df.copy()
 
