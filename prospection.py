@@ -11,7 +11,7 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="PROSPECTION", page_icon="🌿", layout="wide")
 
 st.image("logo.png", width=180)
-st.title("CRM AGRICOLE - PROSPECTION")
+st.title("PROSPECTION")
 
 # =====================================================
 # GOOGLE SHEETS
