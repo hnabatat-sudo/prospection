@@ -186,9 +186,9 @@ with tab2:
 
         col1, col2, col3 = st.columns(3)
 
-        recherche_nom = col1.text_input("Nom / Société", key="recherche_nom")
-        recherche_tel = col2.text_input("Téléphone", key="recherche_tel")
-        recherche_region = col3.text_input("Région", key="recherche_region")
+        recherche_nom = col1.text_input("nom / Société", key="recherche_nom")
+        recherche_tel = col2.text_input("téléphone", key="recherche_tel")
+        recherche_region = col3.text_input("région", key="recherche_region")
 
         filtered_df = df.copy()
 
