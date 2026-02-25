@@ -4,7 +4,7 @@ from datetime import date
 import gspread
 from google.oauth2.service_account import Credentials
 import streamlit.components.v1 as components
-
+from streamlit_js_eval import get_geolocation
 # =====================================================
 # CONFIGURATION
 # =====================================================
@@ -103,36 +103,28 @@ with tab1:
     )
 
     # ===================== GPS AUTO =====================
+    from streamlit_js_eval import get_geolocation
+
     st.markdown("### 📍 Localisation automatique")
 
-    components.html("""
-    <script>
-    navigator.geolocation.getCurrentPosition(
-        (position) => {
-            const lat = position.coords.latitude;
-            const lon = position.coords.longitude;
-            window.parent.postMessage(
-                {type: "streamlit:setComponentValue", value: lat + "," + lon},
-                "*"
-            );
-        }
-    );
-    </script>
-    """, height=0)
+    location = get_geolocation()
 
-    gps = st.text_input("Coordonnées GPS (auto)")
-    lien_maps = ""
+    if location:
+        gps_lat = location["coords"]["latitude"]
+        gps_lon = location["coords"]["longitude"]
 
-    if gps:
-        try:
-            lat, lon = gps.split(",")
-            lien_maps = f"https://www.google.com/maps?q={lat},{lon}"
-            st.success("Position détectée automatiquement ✅")
-            st.markdown(f"[📍 Ouvrir dans Google Maps]({lien_maps})")
-            st.map(pd.DataFrame({"lat": [float(lat)], "lon": [float(lon)]}))
-        except:
-            pass
+        gps = f"{gps_lat},{gps_lon}"
+        lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
 
+        st.success("📍 Position détectée automatiquement")
+        st.write("Latitude :", gps_lat)
+        st.write("Longitude :", gps_lon)
+        st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
+
+    else:
+        gps = ""
+        lien_maps = ""
+        st.warning("Cliquez sur Autoriser la localisation dans votre navigateur")
     # ===================== ENREGISTREMENT =====================
     if st.button("💾 Enregistrer le client"):
 
