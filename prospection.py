@@ -247,3 +247,26 @@ with tab3:
                 if not coords.empty:
                     st.subheader("Carte globale des clients")
                     st.map(coords)
+                if "cultures" in df.columns:
+
+                    st.subheader("🌾 Répartition des Cultures")
+
+                    all_cultures = []
+
+                    for val in df["cultures"].dropna():
+                        cultures_split = str(val).split(",")
+                        for c in cultures_split:
+                            all_cultures.append(c.strip())
+
+                    if all_cultures:
+                        culture_series = pd.Series(all_cultures)
+                        st.bar_chart(culture_series.value_counts())
+
+                if "superficie totale" in df.columns:
+                    st.subheader("📊 Superficie Totale Prospectée")
+                    total_surface = pd.to_numeric(df["superficie totale"], errors="coerce").sum()
+                    st.metric("Total hectares", f"{round(total_surface, 2)} ha")
+
+                if "superficies" in df.columns:
+                    st.subheader("📋 Détail Superficie par Culture")
+                    st.dataframe(df[["cultures", "superficies"]], use_container_width=True)
