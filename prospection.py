@@ -126,42 +126,106 @@ with tab1:
         lien_maps = ""
         st.warning("Cliquez sur Autoriser la localisation dans votre navigateur")
     # ===================== ENREGISTREMENT =====================
-    if st.button("💾 Enregistrer le client"):
+    # ==============================
+    # FORMULAIRE ENREGISTREMENT
+    # ==============================
+    with st.form("form_prospection"):
 
-        new_row = [
-            str(date_prospection),
-            commercial,
-            region,
-            type_client,
-            nom,
-            prenom,
-            nom_societe,
-            ice,
-            responsable,
-            tel,
-            email,
-            adresse,
-            gps,
-            lien_maps,
-            superficie_totale,
-            cultures_string,
-            superficies_string
-        ]
+        submit = st.form_submit_button("💾 Enregistrer le client")
 
-        sheet.append_row(new_row)
-        st.success("Client enregistré avec succès")
-        st.rerun()
+        if submit:
 
+            # Vérification anti-doublon (Email + Téléphone)
+            existing = df[
+                (df["Téléphone"].astype(str) == str(tel)) |
+                (df["Email"].astype(str) == str(email))
+                ]
+
+            if not existing.empty:
+                st.error("⚠️ Client déjà enregistré !")
+            else:
+                new_row = [
+                    str(date_prospection),
+                    commercial,
+                    region,
+                    type_client,
+                    nom,
+                    prenom,
+                    nom_societe,
+                    ice,
+                    responsable,
+                    tel,
+                    email,
+                    adresse,
+                    gps,
+                    lien_maps,
+                    superficie_totale,
+                    cultures_string,
+                    superficies_string
+                ]
+
+                sheet.append_row(new_row)
+                st.success("✅ Client enregistré avec succès !")
+                st.balloons()
+                st.rerun()
+# =====================================================
+# ONGLET 2 - BASE CLIENTS
+# =====================================================
 # =====================================================
 # ONGLET 2 - BASE CLIENTS
 # =====================================================
 with tab2:
 
+    st.subheader("📂 Base Clients")
+
     if df.empty:
         st.warning("Aucune donnée disponible")
     else:
-        st.dataframe(df, use_container_width=True)
 
+        st.markdown("### 🔎 Recherche avancée")
+
+        col1, col2, col3 = st.columns(3)
+
+        recherche_nom = col1.text_input("Nom / Société")
+        recherche_tel = col2.text_input("Téléphone")
+        recherche_region = col3.text_input("Région")
+
+        filtered_df = df.copy()
+
+        if recherche_nom:
+            filtered_df = filtered_df[
+                filtered_df.apply(
+                    lambda row: recherche_nom.lower() in str(row).lower(),
+                    axis=1
+                )
+            ]
+
+        if recherche_tel:
+            filtered_df = filtered_df[
+                filtered_df["Téléphone"].astype(str)
+                .str.contains(recherche_tel)
+            ]
+
+        if recherche_region:
+            filtered_df = filtered_df[
+                filtered_df["Region"].astype(str)
+                .str.contains(recherche_region)
+            ]
+
+        st.dataframe(filtered_df, use_container_width=True)
+
+        # SUPPRESSION CLIENT
+        if not filtered_df.empty:
+
+            index_to_delete = st.selectbox(
+                "Sélectionner index à supprimer",
+                filtered_df.index
+            )
+
+            if st.button("🗑 Supprimer Client"):
+                sheet.delete_rows(index_to_delete + 2)
+                st.success("Client supprimé avec succès")
+                st.rerun()
 # =====================================================
 # ONGLET 3 - DASHBOARD
 # =====================================================
