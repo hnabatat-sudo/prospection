@@ -3,166 +3,142 @@ import pandas as pd
 from datetime import date
 import gspread
 from google.oauth2.service_account import Credentials
-import folium
-from streamlit_folium import st_folium
-from fpdf import FPDF
-import re
+import streamlit.components.v1 as components
 
 # =====================================================
-# CONFIG
+# CONFIGURATION
 # =====================================================
-st.set_page_config(page_title="CRM PROSPECTION", page_icon="🌿", layout="wide")
+st.set_page_config(page_title="PROSPECTION", page_icon="🌿", layout="wide")
 
-# =====================================================
-# LOGO
-# =====================================================
-try:
-    st.image("logo.png", width=200)
-except:
-    pass
-
-# =====================================================
-# STYLE
-# =====================================================
-st.markdown("""
-<style>
-.main {background-color:#f4f9f4;}
-h1,h2,h3 {color:#0B6E4F;}
-.stButton>button {
-    background-color:#0B6E4F;
-    color:white;
-    border-radius:8px;
-}
-</style>
-""", unsafe_allow_html=True)
-
-# =====================================================
-# AUTH
-# =====================================================
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-users = st.secrets.get("users", {})
-
-if not st.session_state.authenticated:
-
-    st.title("🔐 Connexion")
-
-    u = st.text_input("Utilisateur")
-    p = st.text_input("Mot de passe", type="password")
-
-    if st.button("Se connecter"):
-        if u in users and users[u] == p:
-            st.session_state.authenticated = True
-            st.session_state.user = u
-            st.rerun()
-        else:
-            st.error("Identifiants incorrects")
-
-    st.stop()
+st.image("logo.png", width=180)
+st.title("CRM AGRICOLE - PROSPECTION")
 
 # =====================================================
 # GOOGLE SHEETS
 # =====================================================
+SHEET_ID = "1IQm3ua2N_Zn9_-X6h54giefxDXYD1620GuMBlUqOyKA"
+
 scope = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive"
 ]
 
-creds = Credentials.from_service_account_info(
+credentials = Credentials.from_service_account_info(
     st.secrets["gcp_service_account"],
     scopes=scope
 )
 
-client = gspread.authorize(creds)
-
-SHEET_ID = "COLLER_ICI_ID_DU_SHEET"
+client = gspread.authorize(credentials)
 sheet = client.open_by_key(SHEET_ID).sheet1
 
-data = sheet.get_all_values()
+data = sheet.get_all_records()
+df = pd.DataFrame(data)
 
-if len(data) > 1:
-    df = pd.DataFrame(data[1:], columns=data[0])
-else:
-    df = pd.DataFrame()
+if not df.empty:
+    df.columns = df.columns.str.strip().str.lower()
 
-# =====================================================
-# SIDEBAR
-# =====================================================
-st.sidebar.title("🌿 CRM AGRICOLE")
-st.sidebar.write(f"👤 {st.session_state.user}")
-
-if st.sidebar.button("Déconnexion"):
-    st.session_state.authenticated = False
-    st.rerun()
+tab1, tab2, tab3 = st.tabs(
+    ["📝 Nouvelle Prospection", "🔎 Base Clients", "📊 Dashboard"]
+)
 
 # =====================================================
-# TABS
-# =====================================================
-tab1, tab2, tab3 = st.tabs(["📝 Nouvelle", "🔎 Clients", "📊 Dashboard"])
-
-# =====================================================
-# TAB 1 - NOUVELLE PROSPECTION
+# ONGLET 1 - NOUVELLE PROSPECTION
 # =====================================================
 with tab1:
 
-    st.header("Nouvelle Prospection")
+    commercial = st.text_input("Commercial")
+    date_prospection = st.date_input("Date", date.today())
+    region = st.text_input("Région")
 
-    type_client = st.selectbox("Type", ["Particulier", "Société"])
-
-    col1, col2 = st.columns(2)
-
-    with col1:
-        date_p = st.date_input("Date", date.today())
-        region = st.text_input("Région")
-        tel = st.text_input("Téléphone")
-
-    with col2:
-        email = st.text_input("Email")
-        adresse = st.text_input("Adresse")
+    type_client = st.selectbox("Type de client", ["Particulier", "Société"])
 
     if type_client == "Particulier":
         nom = st.text_input("Nom")
         prenom = st.text_input("Prénom")
-        nom_societe = ice = responsable = ""
+        nom_societe = ""
+        ice = ""
+        responsable = ""
     else:
-        nom_societe = st.text_input("Société")
+        nom_societe = st.text_input("Nom Société")
         ice = st.text_input("ICE")
         responsable = st.text_input("Responsable")
-        nom = prenom = ""
+        nom = ""
+        prenom = ""
 
-    # GPS AUTO
-    lien = st.text_input("Lien Google Maps")
-    gps = st.text_input("GPS (lat,lon)")
+    tel = st.text_input("Téléphone")
+    email = st.text_input("Email")
+    adresse = st.text_input("Adresse")
 
-    if lien and not gps:
-        match = re.search(r"@(-?\d+\.\d+),(-?\d+\.\d+)", lien)
-        if match:
-            gps = f"{match.group(1)},{match.group(2)}"
+    # ===================== CULTURES =====================
+    st.markdown("### 🌾 Cultures")
 
-    if gps and not lien:
-        lien = f"https://www.google.com/maps?q={gps}"
+    liste_cultures = [
+        "Tomate","Poivron","Aubergine","Oignon","Courgette",
+        "Laitue","Ciboulette","Herbes aromatiques",
+        "Melon","Pasteque","Concombre"
+    ]
 
-    # CULTURES
-    st.subheader("Cultures")
+    cultures_selectionnees = st.multiselect(
+        "Sélectionner les cultures",
+        liste_cultures
+    )
 
-    cultures_list = ["Tomate","Poivron","Aubergine","Oignon","Melon","Pastèque"]
-    selected = st.multiselect("Sélectionner", cultures_list)
+    cultures_data = {}
+    superficie_totale = 0
 
-    superficies = {}
-    total = 0
+    for culture in cultures_selectionnees:
+        superficie = st.number_input(
+            f"Superficie {culture} (ha)",
+            min_value=0.0,
+            key=culture
+        )
+        cultures_data[culture] = superficie
+        superficie_totale += superficie
 
-    for c in selected:
-        val = st.number_input(f"Superficie {c} (ha)", 0.0, step=0.1, key=c)
-        superficies[c] = val
-        total += val
+    st.info(f"Superficie totale : {superficie_totale} ha")
 
-    st.info(f"Superficie Totale: {round(total,2)} ha")
+    cultures_string = ", ".join(cultures_selectionnees)
+    superficies_string = " | ".join(
+        [f"{c}:{s}ha" for c, s in cultures_data.items()]
+    )
 
-    if st.button("💾 Enregistrer"):
-        row = [
-            str(date_p),
-            st.session_state.user,
+    # ===================== GPS AUTO =====================
+    st.markdown("### 📍 Localisation automatique")
+
+    components.html("""
+    <script>
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            const lat = position.coords.latitude;
+            const lon = position.coords.longitude;
+            window.parent.postMessage(
+                {type: "streamlit:setComponentValue", value: lat + "," + lon},
+                "*"
+            );
+        }
+    );
+    </script>
+    """, height=0)
+
+    gps = st.text_input("Coordonnées GPS (auto)")
+    lien_maps = ""
+
+    if gps:
+        try:
+            lat, lon = gps.split(",")
+            lien_maps = f"https://www.google.com/maps?q={lat},{lon}"
+            st.success("Position détectée automatiquement ✅")
+            st.markdown(f"[📍 Ouvrir dans Google Maps]({lien_maps})")
+            st.map(pd.DataFrame({"lat": [float(lat)], "lon": [float(lon)]}))
+        except:
+            pass
+
+    # ===================== ENREGISTREMENT =====================
+    if st.button("💾 Enregistrer le client"):
+
+        new_row = [
+            str(date_prospection),
+            commercial,
             region,
             type_client,
             nom,
@@ -174,93 +150,55 @@ with tab1:
             email,
             adresse,
             gps,
-            lien,
-            total,
-            ", ".join(selected),
-            str(superficies)
+            lien_maps,
+            superficie_totale,
+            cultures_string,
+            superficies_string
         ]
-        sheet.append_row(row)
-        st.success("Enregistré")
+
+        sheet.append_row(new_row)
+        st.success("Client enregistré avec succès")
         st.rerun()
 
 # =====================================================
-# TAB 2 - CLIENTS
+# ONGLET 2 - BASE CLIENTS
 # =====================================================
 with tab2:
 
     if df.empty:
-        st.warning("Aucun client")
+        st.warning("Aucune donnée disponible")
     else:
-
-        search = st.text_input("Recherche client")
-
-        if search:
-            mask = df.apply(lambda r: search.lower() in str(r).lower(), axis=1)
-            df_filtered = df[mask]
-        else:
-            df_filtered = df
-
-        st.dataframe(df_filtered, use_container_width=True)
-
-        if not df_filtered.empty:
-
-            idx = st.selectbox("Sélectionner", df_filtered.index)
-            client_data = df_filtered.loc[idx]
-
-            st.subheader("Fiche Client")
-            st.write(client_data)
-
-            # CARTE
-            if client_data["GPS"]:
-                lat, lon = map(float, client_data["GPS"].split(","))
-                m = folium.Map(location=[lat, lon], zoom_start=14)
-                folium.Marker([lat, lon]).add_to(m)
-                st_folium(m, width=700)
-
-            # MODIFIER
-            st.subheader("Modifier")
-            new_tel = st.text_input("Téléphone", client_data["Telephone"])
-            if st.button("Sauvegarder"):
-                row_num = idx + 2
-                sheet.update(f"J{row_num}", new_tel)
-                st.success("Mis à jour")
-                st.rerun()
-
-            # SUPPRIMER
-            if st.checkbox("Confirmer suppression"):
-                if st.button("Supprimer"):
-                    row_num = idx + 2
-                    sheet.delete_rows(row_num)
-                    st.success("Supprimé")
-                    st.rerun()
-
-            # PDF
-            if st.button("Exporter PDF"):
-                pdf = FPDF()
-                pdf.add_page()
-                pdf.set_font("Arial", size=10)
-                for col in client_data.index:
-                    pdf.multi_cell(0, 6, f"{col}: {client_data[col]}")
-                pdf.output("fiche.pdf")
-                with open("fiche.pdf","rb") as f:
-                    st.download_button("Télécharger PDF", f, "fiche.pdf")
+        st.dataframe(df, use_container_width=True)
 
 # =====================================================
-# TAB 3 - DASHBOARD
+# ONGLET 3 - DASHBOARD
 # =====================================================
 with tab3:
 
     if df.empty:
-        st.warning("Pas de données")
+        st.warning("Aucune donnée disponible")
     else:
-        df["Superficie Totale"] = pd.to_numeric(df["Superficie Totale"], errors="coerce").fillna(0)
 
         col1, col2 = st.columns(2)
         col1.metric("Total Clients", len(df))
-        col2.metric("Superficie Totale", round(df["Superficie Totale"].sum(),2))
+        col2.metric("Régions", df["region"].nunique() if "region" in df.columns else 0)
 
-        st.subheader("Clients par Région")
-        st.bar_chart(df["Region"].value_counts())
+        if "commercial" in df.columns:
+            st.subheader("Clients par Commercial")
+            st.bar_chart(df["commercial"].value_counts())
 
-        st.subheader("Performance Commerciale")
-        st.bar_chart(df.groupby("Commerciale")["Superficie Totale"].sum())
+        if "region" in df.columns:
+            st.subheader("Clients par Région")
+            st.bar_chart(df["region"].value_counts())
+
+        if "gps" in df.columns:
+            gps_df = df[df["gps"] != ""]
+            if not gps_df.empty:
+                coords = gps_df["gps"].str.split(",", expand=True)
+                coords.columns = ["lat", "lon"]
+                coords["lat"] = pd.to_numeric(coords["lat"], errors="coerce")
+                coords["lon"] = pd.to_numeric(coords["lon"], errors="coerce")
+                coords = coords.dropna()
+                if not coords.empty:
+                    st.subheader("Carte globale des clients")
+                    st.map(coords)
