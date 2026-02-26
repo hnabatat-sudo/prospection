@@ -113,25 +113,28 @@ with tab1:
     )
 
     # ===================== GPS =====================
-    st.markdown("### 📍 Localisation")
+    # ===================== GPS AUTO =====================
+    st.markdown("### 📍 Localisation automatique")
+
+    location = get_geolocation()
 
     gps = ""
     lien_maps = ""
 
-    if st.button("📍 Détecter ma position"):
-        location = get_geolocation()
-        if location:
-            gps_lat = location["coords"]["latitude"]
-            gps_lon = location["coords"]["longitude"]
+    if location is not None and "coords" in location:
+        gps_lat = location["coords"]["latitude"]
+        gps_lon = location["coords"]["longitude"]
 
-            gps = f"{gps_lat},{gps_lon}"
-            lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
+        gps = f"{gps_lat},{gps_lon}"
+        lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
 
-            st.success("Position détectée")
-            st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
-        else:
-            st.error("Autorisez la localisation dans votre navigateur")
+        st.success("📍 Position détectée automatiquement")
+        st.write("Latitude :", gps_lat)
+        st.write("Longitude :", gps_lon)
+        st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
 
+    else:
+        st.info("⏳ Détection de la position en cours...")
     # ===================== ENREGISTREMENT =====================
     if st.button("💾 Enregistrer le client"):
 
