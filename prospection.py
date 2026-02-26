@@ -37,9 +37,6 @@ df = pd.DataFrame(data)
 if not df.empty:
     df.columns = df.columns.str.strip().str.lower()
 
-# =====================================================
-# TABS
-# =====================================================
 tab1, tab2, tab3 = st.tabs(
     ["📝 Nouvelle Prospection", "🔎 Base Clients", "📊 Dashboard"]
 )
@@ -49,131 +46,134 @@ tab1, tab2, tab3 = st.tabs(
 # =====================================================
 with tab1:
 
-    st.subheader("Enregistrer un client")
+    with st.form("form_prospection"):
 
-    commercial = st.text_input("Commercial")
-    date_prospection = st.date_input("Date", date.today())
-    region = st.text_input("Région")
+        commercial = st.text_input("Commercial", key="form_commercial")
+        date_prospection = st.date_input("Date", date.today(), key="form_date")
+        region = st.text_input("Région", key="form_region")
 
-    type_client = st.selectbox("Type de client", ["Particulier", "Société"])
+        type_client = st.selectbox(
+            "Type de client",
+            ["Particulier", "Société"],
+            key="form_type"
+        )
 
-    if type_client == "Particulier":
-        nom = st.text_input("Nom")
-        prenom = st.text_input("Prénom")
-        nom_societe = ""
-        ice = ""
-        responsable = ""
-    else:
-        nom_societe = st.text_input("Nom Société")
-        ice = st.text_input("ICE")
-        responsable = st.text_input("Responsable")
-        nom = ""
-        prenom = ""
-
-    tel = st.text_input("Téléphone")
-    email = st.text_input("Email")
-    adresse = st.text_input("Adresse")
-
-    # ===================== CULTURES =====================
-    st.markdown("### 🌾 Cultures")
-
-    liste_cultures = [
-        "Tomate","Poivron","Aubergine","Oignon","Courgette",
-        "Laitue","Ciboulette","Herbes aromatiques",
-        "Melon","Pasteque","Concombre"
-    ]
-
-    cultures_selectionnees = st.multiselect(
-        "Sélectionner les cultures",
-        liste_cultures
-    )
-
-    cultures_data = {}
-    superficie_totale = 0
-
-    if cultures_selectionnees:
-        st.markdown("#### 📏 Superficie par culture")
-
-        for culture in cultures_selectionnees:
-            superficie = st.number_input(
-                f"Superficie {culture} (ha)",
-                min_value=0.0,
-                step=0.1,
-                key=f"sup_{culture}"
-            )
-
-            cultures_data[culture] = superficie
-            superficie_totale += superficie
-
-        st.success(f"Superficie totale : {superficie_totale:.2f} ha")
-
-    cultures_string = ", ".join(cultures_selectionnees)
-    superficies_string = " | ".join(
-        [f"{c}:{s}ha" for c, s in cultures_data.items()]
-    )
-
-    # ===================== GPS =====================
-    st.markdown("### 📍 Localisation automatique")
-
-    location = get_geolocation()
-
-    if location:
-        gps_lat = location["coords"]["latitude"]
-        gps_lon = location["coords"]["longitude"]
-        gps = f"{gps_lat},{gps_lon}"
-        lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
-        st.success("📍 Position détectée automatiquement")
-        st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
-    else:
-        gps = ""
-        lien_maps = ""
-        st.info("Autorisez la localisation si demandé")
-
-    # ===================== ENREGISTREMENT =====================
-    if st.button("💾 Enregistrer le client"):
-
-        existing = pd.DataFrame()
-
-        if not df.empty:
-            if "téléphone" in df.columns:
-                existing_tel = df[df["téléphone"].astype(str) == str(tel)]
-            else:
-                existing_tel = pd.DataFrame()
-
-            if "email" in df.columns:
-                existing_email = df[df["email"].astype(str) == str(email)]
-            else:
-                existing_email = pd.DataFrame()
-
-            existing = pd.concat([existing_tel, existing_email])
-
-        if not existing.empty:
-            st.error("⚠️ Client déjà enregistré !")
+        if type_client == "Particulier":
+            nom = st.text_input("Nom", key="form_nom")
+            prenom = st.text_input("Prénom", key="form_prenom")
+            nom_societe = ""
+            ice = ""
+            responsable = ""
         else:
-            new_row = [
-                str(date_prospection),
-                commercial,
-                region,
-                type_client,
-                nom,
-                prenom,
-                nom_societe,
-                ice,
-                responsable,
-                tel,
-                email,
-                adresse,
-                gps,
-                lien_maps,
-                superficie_totale,
-                cultures_string,
-                superficies_string
-            ]
+            nom_societe = st.text_input("Nom Société", key="form_societe")
+            ice = st.text_input("ICE", key="form_ice")
+            responsable = st.text_input("Responsable", key="form_responsable")
+            nom = ""
+            prenom = ""
 
-            sheet.append_row(new_row)
-            st.success("✅ Client enregistré avec succès !")
-            st.balloons()
-            st.rerun()
+        tel = st.text_input("Téléphone", key="form_tel")
+        email = st.text_input("Email", key="form_email")
+        adresse = st.text_input("Adresse", key="form_adresse")
+
+        # ================= CULTURES =================
+        st.markdown("### 🌾 Cultures")
+
+        liste_cultures = [
+            "Tomate", "Poivron", "Aubergine", "Oignon", "Courgette",
+            "Laitue", "Ciboulette", "Herbes aromatiques",
+            "Melon", "Pastèque", "Concombre"
+        ]
+
+        cultures_selectionnees = st.multiselect(
+            "Sélectionner les cultures",
+            liste_cultures,
+            key="form_cultures"
+        )
+
+        cultures_data = {}
+        superficie_totale = 0
+
+        if cultures_selectionnees:
+            st.markdown("#### 📏 Superficie par culture")
+
+            for culture in cultures_selectionnees:
+                superficie = st.number_input(
+                    f"Superficie {culture} (ha)",
+                    min_value=0.0,
+                    step=0.1,
+                    format="%.2f",
+                    key=f"form_superficie_{culture}"
+                )
+
+                cultures_data[culture] = superficie
+                superficie_totale += superficie
+
+            st.success(f"Superficie totale : {superficie_totale:.2f} ha")
+
+        cultures_string = ", ".join(cultures_selectionnees)
+        superficies_string = " | ".join(
+            [f"{c}:{s}ha" for c, s in cultures_data.items()]
+        )
+
+        # ================= GPS =================
+        st.markdown("### 📍 Localisation automatique")
+
+        location = get_geolocation()
+
+        if location:
+            gps_lat = location["coords"]["latitude"]
+            gps_lon = location["coords"]["longitude"]
+
+            gps = f"{gps_lat},{gps_lon}"
+            lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
+
+            st.success("📍 Position détectée automatiquement")
+            st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
+        else:
+            gps = ""
+            lien_maps = ""
+            st.warning("Autorisez la localisation dans votre navigateur")
+
+        submit = st.form_submit_button("💾 Enregistrer le client")
+
+        if submit:
+
+            # Anti doublon
+            if not df.empty and "téléphone" in df.columns:
+                existing = df[
+                    (df["téléphone"].astype(str) == str(tel)) |
+                    (df["email"].astype(str) == str(email))
+                ]
+            else:
+                existing = pd.DataFrame()
+
+            if not existing.empty:
+                st.error("⚠️ Client déjà enregistré !")
+            else:
+                new_row = [
+                    str(date_prospection),
+                    commercial,
+                    region,
+                    type_client,
+                    nom,
+                    prenom,
+                    nom_societe,
+                    ice,
+                    responsable,
+                    tel,
+                    email,
+                    adresse,
+                    gps,
+                    lien_maps,
+                    superficie_totale,
+                    cultures_string,
+                    superficies_string
+                ]
+
+                sheet.append_row(new_row)
+                st.success("✅ Client enregistré avec succès !")
+                st.balloons()
+                st.rerun()
 
 # =====================================================
 # ONGLET 2 - BASE CLIENTS
@@ -186,9 +186,11 @@ with tab2:
         st.warning("Aucune donnée disponible")
     else:
 
-        recherche_nom = st.text_input("Nom / Société")
-        recherche_tel = st.text_input("Téléphone")
-        recherche_region = st.text_input("Région")
+        col1, col2, col3 = st.columns(3)
+
+        recherche_nom = col1.text_input("Nom / Société", key="search_nom")
+        recherche_tel = col2.text_input("Téléphone", key="search_tel")
+        recherche_region = col3.text_input("Région", key="search_region")
 
         filtered_df = df.copy()
 
@@ -221,10 +223,9 @@ with tab3:
         st.warning("Aucune donnée disponible")
     else:
 
-        st.metric("Total Clients", len(df))
-
-        if "region" in df.columns:
-            st.metric("Régions", df["region"].nunique())
+        col1, col2 = st.columns(2)
+        col1.metric("Total Clients", len(df))
+        col2.metric("Régions", df["region"].nunique() if "region" in df.columns else 0)
 
         if "commercial" in df.columns:
             st.subheader("Clients par Commercial")
@@ -242,7 +243,6 @@ with tab3:
                 coords["lat"] = pd.to_numeric(coords["lat"], errors="coerce")
                 coords["lon"] = pd.to_numeric(coords["lon"], errors="coerce")
                 coords = coords.dropna()
-
                 if not coords.empty:
                     st.subheader("Carte globale des clients")
                     st.map(coords)
