@@ -11,7 +11,7 @@ from streamlit_js_eval import get_geolocation
 st.set_page_config(page_title="PROSPECTION", page_icon="🌿", layout="wide")
 
 st.image("logo.png", width=180)
-st.title("CRM AGRICOLE - PROSPECTION")
+st.title("PROSPECTION")
 
 # =====================================================
 # GOOGLE SHEETS
@@ -51,7 +51,6 @@ with tab1:
 
     st.subheader("Enregistrer un client")
 
-    # Infos générales
     commercial = st.text_input("Commercial")
     date_prospection = st.date_input("Date", date.today())
     region = st.text_input("Région")
@@ -102,6 +101,7 @@ with tab1:
                 step=0.1,
                 key=f"sup_{culture}"
             )
+
             cultures_data[culture] = superficie
             superficie_totale += superficie
 
@@ -122,7 +122,7 @@ with tab1:
         gps_lon = location["coords"]["longitude"]
         gps = f"{gps_lat},{gps_lon}"
         lien_maps = f"https://www.google.com/maps?q={gps_lat},{gps_lon}"
-        st.success("Position détectée automatiquement")
+        st.success("📍 Position détectée automatiquement")
         st.markdown(f"[🌍 Ouvrir dans Google Maps]({lien_maps})")
     else:
         gps = ""
@@ -132,7 +132,6 @@ with tab1:
     # ===================== ENREGISTREMENT =====================
     if st.button("💾 Enregistrer le client"):
 
-        # Anti-doublon
         existing = pd.DataFrame()
 
         if not df.empty:
@@ -187,11 +186,9 @@ with tab2:
         st.warning("Aucune donnée disponible")
     else:
 
-        col1, col2, col3 = st.columns(3)
-
-        recherche_nom = col1.text_input("Nom / Société")
-        recherche_tel = col2.text_input("Téléphone")
-        recherche_region = col3.text_input("Région")
+        recherche_nom = st.text_input("Nom / Société")
+        recherche_tel = st.text_input("Téléphone")
+        recherche_region = st.text_input("Région")
 
         filtered_df = df.copy()
 
@@ -224,9 +221,10 @@ with tab3:
         st.warning("Aucune donnée disponible")
     else:
 
-        col1, col2 = st.columns(2)
-        col1.metric("Total Clients", len(df))
-        col2.metric("Régions", df["region"].nunique() if "region" in df.columns else 0)
+        st.metric("Total Clients", len(df))
+
+        if "region" in df.columns:
+            st.metric("Régions", df["region"].nunique())
 
         if "commercial" in df.columns:
             st.subheader("Clients par Commercial")
